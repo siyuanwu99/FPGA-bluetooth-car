@@ -6,11 +6,13 @@ module bt_uart (
   input            rst_pin,        // Active HIGH reset (from pin)
 
   // RS232 signals
+  input             switch,
   input            rxd_pin,        // RS232 RXD pin
   output           txd_pin,        // RS232 RXD pin
 
   // Loopback selector
   input            lb_sel_pin,     // Loopback selector 
+  
   //BT 
     output bt_pw_on,
     output bt_master_slave,
@@ -27,9 +29,10 @@ module bt_uart (
     output     seg7_0_dp,
     output     seg7_1_dp,
   // LED outputs
-	output     [15:0] led_pins
+	  output     [15:0] led_pins,
 
-  
+  // Motor outputs
+    output     [15:0] motor_pins
 );
 
 
@@ -37,7 +40,7 @@ module bt_uart (
 // Parameter definitions
 //***************************************************************************
 
-  parameter BAUD_RATE           = 9600;   
+  parameter BAUD_RATE           = 9600;   //
 
   parameter CLOCK_RATE_RX       = 100_000_000;
   parameter CLOCK_RATE_TX       = 100_000_000; 
@@ -76,7 +79,7 @@ module bt_uart (
   wire        send_resp_val;  // A response is requested
   wire [1:0]  send_resp_type; // Type of response - see localparams
   wire [15:0] send_resp_data; // Data to be output
-
+  wire [15:0] bt_data16;
   wire [31:0] bt_data32;
 
   // From the response generator back to the command parser
@@ -96,11 +99,15 @@ module bt_uart (
   wire        char_fifo_rd_en;  // Pop signal to the char FIFO
   wire        txd_tx;           // The transmit serial signal
 
+
+  // From motor control
+
+
 //***************************************************************************
 // Code
 //***************************************************************************
 
-  // Instantiate input/output buffers
+  // Instantiate input/output buffers 输入输出缓存�?
   IBUF IBUF_rst_i0      (.I (rst_pin),      .O (rst_i));
   IBUF IBUF_rxd_i0      (.I (rxd_pin),      .O (rxd_i));
   IBUF IBUF_lb_sel_i0   (.I (lb_sel_pin),   .O (lb_sel_i));
@@ -189,8 +196,8 @@ module bt_uart (
     .send_resp_data    (send_resp_data), // Data to be output
 
     .send_resp_done    (send_resp_done), // The response generation is complete
-    .bt_data16                (led_o),
-	.bt_data32                (bt_data32)
+    .bt_data16                (bt_data16),    // 16 bit 0-1 data
+	  .bt_data32                (bt_data32) // 32 bit hex data
   );
 
   // Instantiate the Response Generator
@@ -277,14 +284,31 @@ module bt_uart (
     .an         (seg7_1_an),
     .dp         (seg7_1_dp)
     );
+  
+///////////////////////////////////////////////////////////////////////
+  wire [15:0]  car_command_wire;
 
+  bt_decoder decoder(
+    .switch(switch),
+    .input_data(bt_data16),
+    .car_cmd(car_command_wire),
+    .clk(clk_pin),
+    .rst(~rst_i)
+  );
 
+  motor_control control(
+    .clk(clk_pin),
+    .rst(~rst_i),
+    .command(car_command_wire),
+    .StepDrive(motor_pins)
+  );
+
+  assign led_o = car_command_wire;
+/////////////////////////////////////////////////////////////////////
 assign bt_master_slave = sw_pin[0];
 assign bt_sw_hw        = sw_pin[1];
 assign bt_rst_n        = sw_pin[2];
 assign bt_sw           = sw_pin[3];
 assign bt_pw_on        = sw_pin[4];
-
-
 
 endmodule

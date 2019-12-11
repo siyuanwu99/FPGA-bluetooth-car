@@ -38,7 +38,7 @@ module cmd_parse(
      GET_ARG   = 3'b010,
      SEND_RESP = 3'b011;
 
-   localparam
+   localparam   // ACSII code
      CMD_W     = 7'h57,
      CMD_R     = 7'h52,
      CMD_N     = 7'h4e,
@@ -159,7 +159,7 @@ module cmd_parse(
       send_resp_type    <= RESP_ERR;
       send_resp_data    <= 16'h0000;
       bt_data16         <= 16'h0000;
-	  bt_data32         <= 32'h00000000;
+	    bt_data32         <= 32'h00000000;
     end
     else
     begin
